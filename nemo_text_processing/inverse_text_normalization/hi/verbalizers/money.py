@@ -1,5 +1,4 @@
-# Copyright (c) 2024, NVIDIA CORPORATION.  All rights reserved.
-# Copyright 2024 and onwards Google, Inc.
+# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES.  All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,16 +15,25 @@
 import pynini
 from pynini.lib import pynutil
 
-from nemo_text_processing.text_normalization.en.graph_utils import NEMO_CHAR, GraphFst, delete_space
+from nemo_text_processing.text_normalization.en.graph_utils import (
+    NEMO_CHAR,
+    NEMO_NOT_QUOTE,
+    GraphFst,
+    delete_extra_space,
+    delete_space,
+    insert_space,
+)
 
 
 class MoneyFst(GraphFst):
     """
     Finite state transducer for verbalizing money, e.g.
-        money { integer_part: "12" fractional_part: "05" currency: "$" } -> $12.05
+        money { integer_part: "12" morphosyntactic_features: "," fractional_part: "05" currency: "$" } -> $12,05
 
     Args:
+        cardinal: CardinalFst
         decimal: DecimalFst
+        money = MoneyFst
     """
 
     def __init__(self, cardinal: GraphFst, decimal: GraphFst):
@@ -37,8 +45,31 @@ class MoneyFst(GraphFst):
             + pynini.closure(NEMO_CHAR - " ", 1)
             + pynutil.delete("\"")
         )
-        graph = unit + delete_space + decimal.numbers
-        # graph |= unit + delete_space + cardinal.numbers
+        integer = (
+            pynutil.delete("integer_part:")
+            + delete_space
+            + pynutil.delete("\"")
+            + pynini.closure(NEMO_NOT_QUOTE, 1)
+            + pynutil.delete("\"")
+        )
+        fractional = (
+            pynutil.insert(".")
+            + pynutil.delete("fractional_part:")
+            + delete_space
+            + pynutil.delete("\"")
+            + pynini.closure(NEMO_NOT_QUOTE, 1)
+            + pynutil.delete("\"")
+        )
+        graph = (
+            integer
+            + delete_space
+            + pynini.closure(fractional + delete_space, 0, 1)
+            + unit
+            + delete_space
+            + pynini.closure(insert_space + integer + delete_space + unit + delete_space, 0, 1)
+        )
+
+        # graph = unit + delete_space + integer + delete_space
         delete_tokens = self.delete_tokens(graph)
         self.fst = delete_tokens.optimize()
 
@@ -51,7 +82,11 @@ cardinal = CardinalFst()
 decimal = DecimalFst()
 money = MoneyFst(cardinal, decimal)
 # input_text = 'money { integer_part: "९६" currency: "P"  }'
-input_text = 'money { integer: "२०६" currency: "₹"  }'
-# input_text = 'money { integer: "२०६" currency: "ლარი"  }'
+# input_text = 'money { integer_part: "२०६" currency: "₹"  }'
+# input_text = 'money { integer_part: "२०६" currency: "ლარი"  }'
+input_text = 'money { integer_part: "१२०"  fractional_part: "९६" currency: "֏"  }'
+# input_text = 'money { integer_part: "१२०१३"  fractional_part: "७७७" currency: "֏"  }'
+# input_text = 'money { integer_part: "२०६" currency: "₹"   integer_part: "२०६" currency: "P"  }'
+# input_text = 'money { integer_part: "५००" currency: "₹"   integer_part: "५०" currency: "P"  }'
 output = apply_fst(input_text, money.fst)
 print(output)

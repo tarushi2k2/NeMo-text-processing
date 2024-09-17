@@ -43,26 +43,22 @@ class MoneyFst(GraphFst):
         cardinal_graph = cardinal.graph_no_exception
         decimal_graph = decimal.final_graph_wo_negative
         currency_graph = pynini.string_file(get_abs_path("data/money/currency.tsv")).invert()
-        rupay_graph = pynini.string_file(get_abs_path("data/money/rupay.tsv")).invert()
-        paisa_graph = pynini.string_file(get_abs_path("data/money/paisa.tsv")).invert()
 
-        self.integer = pynutil.insert("integer: \"") + cardinal_graph + pynutil.insert("\"")
+        self.integer = pynutil.insert("integer_part: \"") + cardinal_graph + pynutil.insert("\"")
         self.fraction = decimal_graph
         self.currency = pynutil.insert("currency: \"") + currency_graph + pynutil.insert("\" ")
-        self.rupay = pynutil.insert("currency: \"") + rupay_graph + pynutil.insert("\" ")
-        self.paisa = pynutil.insert("currency: \"") + paisa_graph + pynutil.insert("\" ")
         aur = pynutil.delete("और")
 
         graph_currency_decimal = self.fraction + delete_extra_space + self.currency
         graph_currency_cardinal = self.integer + delete_extra_space + self.currency
-        graph_rupay = self.integer + delete_extra_space + self.rupay
-        graph_paisa = self.integer + delete_extra_space + self.paisa
-        # graph_rupay_and_paisa = graph_rupay + delete_extra_space + delete_extra_space + graph_paisa
         graph_rupay_and_paisa = (
-            graph_rupay + delete_extra_space + pynini.closure(aur + delete_extra_space, 0, 1) + graph_paisa
+            graph_currency_cardinal
+            + delete_extra_space
+            + pynini.closure(aur + delete_extra_space, 0, 1)
+            + graph_currency_cardinal
         )
 
-        graph = graph_currency_decimal | graph_currency_cardinal | graph_rupay | graph_paisa | graph_rupay_and_paisa
+        graph = graph_currency_decimal | graph_currency_cardinal | graph_rupay_and_paisa
         self.graph = graph.optimize()
 
         final_graph = self.add_tokens(graph)
@@ -84,6 +80,7 @@ class MoneyFst(GraphFst):
 # input_text = "दो सौ छह लारी"
 # input_text = "दो सौ छह रुपये" #बहत्तर पैसे"
 # input_text = "दो सौ छह रुपये दो सौ छह पैसे"
+# input_text = "दो सौ छह रुपये और दो सौ छह पैसे"
 # input_text = "पाँच सौ रुपये और पचास पैसे"
 # input_text = "पाँच सौ रुपये छियानवे पैसे"
 # input_text = "छियानवे पैसे"
