@@ -66,13 +66,13 @@ class CardinalFst(GraphFst):
         )
         graph_hundred_as_thousand += delete_space
         graph_hundred_as_thousand += self.graph_two_digit | pynutil.insert("००")
-        #graph_in_hundreds =  pynini.union(
-         #   pynutil.delete("साढ़े") + delete_space + graph_digit + delete_space + delete_hundred, pynutil.insert("५०", weight=0.1),
-        #)
-        #graph_in_hundreds |=  pynini.union(
-         #   pynutil.delete("सवा") + delete_space + graph_digit + delete_space + delete_hundred, pynutil.insert("२५", weight=0.1),
-        #)
-        self.graph_hundreds = graph_hundred_component | graph_hundred_as_thousand #| graph_in_hundreds
+        graph_in_hundreds =  pynini.union(
+            pynutil.delete("साढ़े") + delete_space + graph_digit + delete_space + delete_hundred, pynutil.insert("५०", weight=0.1),
+        )
+        graph_in_hundreds |=  pynini.union(
+            pynutil.delete("सवा") + delete_space + graph_digit + delete_space + delete_hundred, pynutil.insert("२५", weight=0.1),
+        )
+        self.graph_hundreds = graph_hundred_component | graph_hundred_as_thousand | graph_in_hundreds
 
         graph_teens_and_ties_component = pynini.union(
             graph_teens_and_ties | pynutil.insert("00") + delete_space + (graph_digit | pynutil.insert("0")),
