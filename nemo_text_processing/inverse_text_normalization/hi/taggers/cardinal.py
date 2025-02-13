@@ -26,7 +26,7 @@ from nemo_text_processing.inverse_text_normalization.hi.graph_utils import (
     GraphFst,
     delete_space,
 )
-from nemo_text_processing.inverse_text_normalization.hi.utils import get_abs_path
+from nemo_text_processing.inverse_text_normalization.hi.utils import get_abs_path, apply_fst
 
 
 class CardinalFst(GraphFst):
@@ -46,10 +46,12 @@ class CardinalFst(GraphFst):
         graph_teens_and_ties = pynini.string_file(get_abs_path("data/numbers/teens_and_ties.tsv")).invert()
         self.graph_two_digit = graph_teens_and_ties | (pynutil.insert("०") + graph_digit)
         graph_hundred = pynini.cross("सौ", "")
+        delete_hundred = pynutil.delete("सौ")
         delete_thousand = pynutil.delete("हज़ार") | pynutil.delete("हजार")
         graph_hundred_component = pynini.union(graph_digit + delete_space + graph_hundred, pynutil.insert("०"))
         graph_hundred_component += delete_space
         graph_hundred_component += self.graph_two_digit | pynutil.insert("००")
+        
 
         graph_hundred_component_at_least_one_none_zero_digit = graph_hundred_component @ (
             pynini.closure(NEMO_HI_DIGIT) + (NEMO_HI_DIGIT - "०") + pynini.closure(NEMO_HI_DIGIT)
@@ -64,8 +66,13 @@ class CardinalFst(GraphFst):
         )
         graph_hundred_as_thousand += delete_space
         graph_hundred_as_thousand += self.graph_two_digit | pynutil.insert("००")
-
-        self.graph_hundreds = graph_hundred_component | graph_hundred_as_thousand
+        #graph_in_hundreds =  pynini.union(
+         #   pynutil.delete("साढ़े") + delete_space + graph_digit + delete_space + delete_hundred, pynutil.insert("५०", weight=0.1),
+        #)
+        #graph_in_hundreds |=  pynini.union(
+         #   pynutil.delete("सवा") + delete_space + graph_digit + delete_space + delete_hundred, pynutil.insert("२५", weight=0.1),
+        #)
+        self.graph_hundreds = graph_hundred_component | graph_hundred_as_thousand #| graph_in_hundreds
 
         graph_teens_and_ties_component = pynini.union(
             graph_teens_and_ties | pynutil.insert("00") + delete_space + (graph_digit | pynutil.insert("0")),
@@ -77,9 +84,21 @@ class CardinalFst(GraphFst):
 
         # %% Indian numeric format simple https://en.wikipedia.org/wiki/Indian_numbering_system
         # This only covers "standard format".
-        # Conventional format like thousand crores/lakh crores is yet to be implemented
+        # Conventional format like thousand crores/lakh crores is yet to be implemented   
         graph_in_thousands = pynini.union(
             self.graph_two_digit + delete_space + delete_thousand, pynutil.insert("००", weight=0.1),
+        )
+        graph_in_thousands |=  pynini.union(
+            pynutil.delete("साढ़े") + delete_space + graph_digit + delete_space + delete_thousand, pynutil.insert("५००", weight=-0.1),
+        )
+        graph_in_thousands |=  pynini.union(
+            pynutil.delete("सवा") + delete_space + graph_digit + delete_space + delete_thousand, pynutil.insert("२५०", weight=-0.1),
+        )
+        graph_in_thousands |=  pynini.union(
+            pynutil.delete("साढ़े") + delete_space + self.graph_two_digit + delete_space + delete_thousand, pynutil.insert("५००", weight=-0.1),
+        )
+        graph_in_thousands |=  pynini.union(
+            pynutil.delete("सवा") + delete_space + self.graph_two_digit + delete_space + delete_thousand, pynutil.insert("२५०", weight=-0.1),
         )
         self.graph_thousands = graph_in_thousands
 
@@ -164,3 +183,12 @@ class CardinalFst(GraphFst):
 
         final_graph = self.add_tokens(final_graph)
         self.fst = final_graph.optimize()
+        
+from nemo_text_processing.inverse_text_normalization.hi.taggers.cardinal import CardinalFst
+cardinal = CardinalFst()
+#input_text = "साढ़े सात सौ"
+input_text = "साढ़े सोलह हज़ार"
+#input_text = "साढ़े सात हज़ार"
+#input_text = "सवा सात हज़ार"
+output = apply_fst(input_text, cardinal.fst)
+print(output)
