@@ -66,8 +66,8 @@ class CardinalFst(GraphFst):
         )
         graph_hundred_as_thousand += delete_space
         graph_hundred_as_thousand += self.graph_two_digit | pynutil.insert("००")
-        graph_in_hundreds =  pynini.union(
-            pynutil.delete("साढ़े") + delete_space + graph_digit + delete_space + delete_hundred, pynutil.insert("५०", weight=0.1),
+        graph_in_hundreds =  (
+            pynutil.delete("साढ़े") + delete_space + graph_digit + pynutil.insert("५०") + delete_space + delete_hundred
         )
         graph_in_hundreds |=  pynini.union(
             pynutil.delete("सवा") + delete_space + graph_digit + delete_space + delete_hundred, pynutil.insert("२५", weight=0.1),
@@ -88,18 +88,12 @@ class CardinalFst(GraphFst):
         graph_in_thousands = pynini.union(
             self.graph_two_digit + delete_space + delete_thousand, pynutil.insert("००", weight=0.1),
         )
-        graph_in_thousands |=  pynini.union(
-            pynutil.delete("साढ़े") + delete_space + graph_digit + delete_space + delete_thousand, pynutil.insert("५००", weight=-0.1),
-        )
-        graph_in_thousands |=  pynini.union(
-            pynutil.delete("सवा") + delete_space + graph_digit + delete_space + delete_thousand, pynutil.insert("२५०", weight=-0.1),
-        )
-        graph_in_thousands |=  pynini.union(
-            pynutil.delete("साढ़े") + delete_space + self.graph_two_digit + delete_space + delete_thousand, pynutil.insert("५००", weight=-0.1),
-        )
-        graph_in_thousands |=  pynini.union(
-            pynutil.delete("सवा") + delete_space + self.graph_two_digit + delete_space + delete_thousand, pynutil.insert("२५०", weight=-0.1),
-        )
+        graph_in_thousands |=  pynini.compose(pynini.union(
+            pynutil.delete("साढ़े") + delete_space + graph_digit + pynutil.insert("५", weight=-0.1) + delete_space + delete_thousand, pynutil.insert("००", weight=0.1)
+        ), NEMO_HI_DIGIT**4)
+        #graph_in_thousands |=  (
+         #   pynutil.delete("सवा") + delete_space + graph_digit + delete_space + delete_thousand, pynutil.insert("२५०", weight=-0.1),
+        #)
         self.graph_thousands = graph_in_thousands
 
         graph_in_lakhs = pynini.union(
@@ -187,8 +181,8 @@ class CardinalFst(GraphFst):
 from nemo_text_processing.inverse_text_normalization.hi.taggers.cardinal import CardinalFst
 cardinal = CardinalFst()
 #input_text = "साढ़े सात सौ"
-input_text = "साढ़े सोलह हज़ार"
-#input_text = "साढ़े सात हज़ार"
+#input_text = "साढ़े सोलह हज़ार"
+input_text = "सात हज़ार"
 #input_text = "सवा सात हज़ार"
 output = apply_fst(input_text, cardinal.fst)
 print(output)
