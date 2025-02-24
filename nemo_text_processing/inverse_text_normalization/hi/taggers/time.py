@@ -15,8 +15,8 @@
 import pynini
 from pynini.lib import pynutil
 
-from nemo_text_processing.inverse_text_normalization.hi.graph_utils import GraphFst, delete_space, insert_space
-from nemo_text_processing.inverse_text_normalization.hi.utils import get_abs_path
+from nemo_text_processing.inverse_text_normalization.hi.graph_utils import GraphFst, delete_space, insert_space, delete_extra_space
+from nemo_text_processing.inverse_text_normalization.hi.utils import get_abs_path, apply_fst
 
 
 class TimeFst(GraphFst):
@@ -82,9 +82,24 @@ class TimeFst(GraphFst):
 
         # hour
         graph_hour = self.hour + delete_space + delete_baje
+        
+        graph_saade = pynutil.delete("साढ़े") + delete_space + self.hour
+        #graph_saade = pynutil.delete("साढ़े") + delete_space + delete_space + pynutil.insert("hours: \"") + hour_graph + delete_space + pynutil.insert(" minutes: \"३०\"")
+        graph_dedh = pynutil.delete("डेढ़") + delete_space + pynutil.insert("hours: \"१\"") + delete_space + pynutil.insert(" minutes: \"३०\"")
+        graph_dhaai = pynutil.delete("ढाई") + delete_space + pynutil.insert("hours: \"२\"") + delete_space + pynutil.insert(" minutes: \"३०\"")
+        graph_quarterly_measures = graph_saade | graph_dedh | graph_dhaai
 
-        graph = graph_hms | graph_hm | graph_hs | graph_ms | graph_hour
+
+        graph = graph_hms | graph_hm | graph_hs | graph_ms | graph_hour | graph_quarterly_measures
         self.graph = graph.optimize()
 
         final_graph = self.add_tokens(graph)
         self.fst = final_graph
+        
+time = TimeFst()
+#input_text = "ढाई"
+#input_text = "डेढ़"
+input_text = "साढ़े पाँच"
+#input_text = "बारह पाँच"
+output = apply_fst(input_text, time.fst)
+print(output)

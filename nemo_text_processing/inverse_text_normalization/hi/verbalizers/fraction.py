@@ -16,7 +16,7 @@
 import pynini
 from pynini.lib import pynutil
 
-from nemo_text_processing.text_normalization.en.graph_utils import NEMO_NOT_QUOTE, NEMO_SPACE, GraphFst, delete_space
+from nemo_text_processing.text_normalization.en.graph_utils import NEMO_NOT_QUOTE, NEMO_SPACE, GraphFst, delete_space, delete_extra_space
 
 
 class FractionFst(GraphFst):
@@ -37,10 +37,11 @@ class FractionFst(GraphFst):
         numerator = pynutil.delete("numerator: \"") + pynini.closure(NEMO_NOT_QUOTE) + pynutil.delete("\"")
 
         denominator = pynutil.delete("denominator: \"") + pynini.closure(NEMO_NOT_QUOTE) + pynutil.delete("\"")
+        mixed_fraction = optional_negative + integer_part + delete_extra_space + numerator + delete_space + pynutil.insert("/") + denominator
 
         graph = (
-            optional_negative + optional_integer_part + numerator + delete_space + pynutil.insert("/") + denominator
-        )
+            optional_negative + numerator + delete_space + pynutil.insert("/") + denominator | mixed_fraction
+        ) 
 
         delete_tokens = self.delete_tokens(graph)
         self.fst = delete_tokens.optimize()
