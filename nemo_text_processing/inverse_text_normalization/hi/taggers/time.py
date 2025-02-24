@@ -83,8 +83,8 @@ class TimeFst(GraphFst):
         # hour
         graph_hour = self.hour + delete_space + delete_baje
         
-        graph_saade = pynutil.delete("साढ़े") + delete_space + self.hour
-        #graph_saade = pynutil.delete("साढ़े") + delete_space + delete_space + pynutil.insert("hours: \"") + hour_graph + delete_space + pynutil.insert(" minutes: \"३०\"")
+        #graph_saade = pynutil.delete("साढ़े") + delete_space + self.hour
+        graph_saade = pynutil.delete("साढ़े") + delete_space + pynutil.insert("hours: \"") + hour_graph + delete_space + pynutil.insert(" minutes: \"३०\"")
         graph_dedh = pynutil.delete("डेढ़") + delete_space + pynutil.insert("hours: \"१\"") + delete_space + pynutil.insert(" minutes: \"३०\"")
         graph_dhaai = pynutil.delete("ढाई") + delete_space + pynutil.insert("hours: \"२\"") + delete_space + pynutil.insert(" minutes: \"३०\"")
         graph_quarterly_measures = graph_saade | graph_dedh | graph_dhaai
