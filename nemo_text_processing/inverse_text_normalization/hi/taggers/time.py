@@ -16,7 +16,7 @@ import pynini
 from pynini.lib import pynutil
 
 from nemo_text_processing.inverse_text_normalization.hi.graph_utils import GraphFst, delete_space, insert_space, delete_extra_space
-from nemo_text_processing.inverse_text_normalization.hi.utils import get_abs_path, apply_fst
+from nemo_text_processing.inverse_text_normalization.hi.utils import get_abs_path
 
 
 class TimeFst(GraphFst):
@@ -35,6 +35,7 @@ class TimeFst(GraphFst):
         hour_graph = pynini.string_file(get_abs_path("data/time/hour.tsv")).invert()
         minute_graph = pynini.string_file(get_abs_path("data/time/minute_and_second.tsv")).invert()
         second_graph = pynini.string_file(get_abs_path("data/time/minute_and_second.tsv")).invert()
+        paune_hour_graph = pynini.string_file(get_abs_path("data/time/hour_for_paune.tsv")).invert()
 
         delete_baje = pynini.union(
             pynutil.delete("बजके") | pynutil.delete("बजकर") | pynutil.delete("बजे") | pynutil.delete("घंटा")
@@ -44,6 +45,7 @@ class TimeFst(GraphFst):
         delete_second = pynutil.delete("सेकंड")
 
         self.hour = pynutil.insert("hours: \"") + hour_graph + pynutil.insert("\" ")
+        self.paune_hour = pynutil.insert("hours: \"") + paune_hour_graph + pynutil.insert("\" ")
         self.minute = pynutil.insert("minutes: \"") + minute_graph + pynutil.insert("\" ")
         self.second = pynutil.insert("seconds: \"") + second_graph + pynutil.insert("\" ")
 
@@ -83,11 +85,12 @@ class TimeFst(GraphFst):
         # hour
         graph_hour = self.hour + delete_space + delete_baje
         
-        #graph_saade = pynutil.delete("साढ़े") + delete_space + self.hour
-        graph_saade = pynutil.delete("साढ़े") + delete_space + pynutil.insert("hours: \"") + hour_graph + delete_space + pynutil.insert(" minutes: \"३०\"")
-        graph_dedh = pynutil.delete("डेढ़") + delete_space + pynutil.insert("hours: \"१\"") + delete_space + pynutil.insert(" minutes: \"३०\"")
-        graph_dhaai = pynutil.delete("ढाई") + delete_space + pynutil.insert("hours: \"२\"") + delete_space + pynutil.insert(" minutes: \"३०\"")
-        graph_quarterly_measures = graph_saade | graph_dedh | graph_dhaai
+        graph_saade = pynutil.add_weight(pynutil.delete("साढ़े") + delete_space + self.hour + delete_space + pynutil.insert(" minutes: \"३०\"") + delete_space + pynini.closure(delete_baje), 0.01)
+        graph_sava = pynutil.add_weight(pynutil.delete("सवा") + delete_space + self.hour + delete_space + pynutil.insert(" minutes: \"१५\"") + delete_space + pynini.closure(delete_baje), 0.01)
+        graph_paune = pynutil.add_weight(pynutil.delete("पौने") + delete_space + self.paune_hour + delete_space + pynutil.insert(" minutes: \"४५\"") + delete_space + pynini.closure(delete_baje), 0.01)
+        graph_dedh = pynutil.add_weight(pynutil.delete("डेढ़") + delete_space + pynini.closure(delete_baje) + pynutil.insert("hours: \"१\"") + delete_space + pynutil.insert(" minutes: \"३०\""), 0.01)
+        graph_dhaai = pynutil.add_weight(pynutil.delete("ढाई") + delete_space + pynini.closure(delete_baje) + pynutil.insert("hours: \"२\"") + delete_space + pynutil.insert(" minutes: \"३०\""), 0.01)
+        graph_quarterly_measures = graph_saade | graph_sava | graph_paune | graph_dedh | graph_dhaai
 
 
         graph = graph_hms | graph_hm | graph_hs | graph_ms | graph_hour | graph_quarterly_measures
@@ -95,11 +98,3 @@ class TimeFst(GraphFst):
 
         final_graph = self.add_tokens(graph)
         self.fst = final_graph
-        
-time = TimeFst()
-#input_text = "ढाई"
-#input_text = "डेढ़"
-input_text = "साढ़े पाँच"
-#input_text = "बारह पाँच"
-output = apply_fst(input_text, time.fst)
-print(output)

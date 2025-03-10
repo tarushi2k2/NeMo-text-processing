@@ -61,11 +61,11 @@ class FractionFst(GraphFst):
         denominator = pynutil.insert(" denominator: \"") + graph_cardinal + pynutil.insert("\"")
         graph_fraction = numerator + delete_bata + denominator
         graph_mixed_fraction = integer + delete_extra_space + pynutil.delete("सही") + delete_space + graph_fraction
-        graph_saade = pynutil.delete("साढ़े") + delete_space + integer + pynutil.insert("numerator: \"१\"") + delete_space + pynutil.insert(" denominator: \"२\"")
-        graph_sava = pynutil.delete("सवा") + delete_space + integer + pynutil.insert("numerator: \"१\"") + delete_space + pynutil.insert(" denominator: \"४\"")
-        graph_paune = pynutil.delete("पौने") + delete_space + integer + pynutil.insert("numerator: \"३\"") + delete_space + pynutil.insert(" denominator: \"४\"")
+        graph_saade = pynutil.add_weight(pynutil.delete("साढ़े") + delete_space + integer + pynutil.insert("numerator: \"१\"") + delete_space + pynutil.insert(" denominator: \"२\""), -0.01)
+        graph_sava = pynutil.add_weight(pynutil.delete("सवा") + delete_space + integer + pynutil.insert("numerator: \"१\"") + delete_space + pynutil.insert(" denominator: \"४\""), -0.001)
+        graph_paune = pynutil.add_weight(pynutil.delete("पौने") + delete_space + integer + pynutil.insert("numerator: \"३\"") + delete_space + pynutil.insert(" denominator: \"४\""), -0.01)
         graph_dedh = pynutil.add_weight(pynutil.delete("डेढ़") + delete_space + pynutil.insert("integer_part: \"१\"") + pynutil.insert(" numerator: \"१\"") + delete_space + pynutil.insert(" denominator: \"२\""), -0.01)
-        graph_dhaai = pynutil.add_weight(pynutil.delete("ढाई") + delete_space + pynutil.insert("integer_part: \"२\"") + pynutil.insert(" numerator: \"१\"") + delete_space + pynutil.insert(" denominator: \"२\""), -0.01)
+        graph_dhaai = pynutil.add_weight(pynutil.delete("ढाई") + delete_space + pynutil.insert("integer_part: \"२\"") + pynutil.insert(" numerator: \"१\"") + delete_space + pynutil.insert(" denominator: \"२\""), -0.1)
         graph_aadha_and_saade_only = pynini.union(pynutil.delete("आधा") | pynutil.delete("साढ़े")) + delete_space + pynutil.insert(" numerator: \"१\"") + delete_space + pynutil.insert(" denominator: \"२\"")
         graph_sava_only = pynutil.delete("सवा") + delete_space + pynutil.insert(" numerator: \"१\"") + delete_space + pynutil.insert(" denominator: \"४\"")
         graph_paune_only = pynini.union(pynutil.delete("पौन") | pynutil.delete("पौना")) + delete_space + pynutil.insert("numerator: \"३\"") + delete_space + pynutil.insert(" denominator: \"४\"")
