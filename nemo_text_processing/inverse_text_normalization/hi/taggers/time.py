@@ -29,12 +29,11 @@ class TimeFst(GraphFst):
         time: TimeFst
     """
 
-    def __init__(self):
+    def __init__(self, cardinal: GraphFst):
         super().__init__(name="time", kind="classify")
-
+    
         hour_graph = pynini.string_file(get_abs_path("data/time/hour.tsv")).invert()
-        minute_graph = pynini.string_file(get_abs_path("data/time/minute_and_second.tsv")).invert()
-        second_graph = pynini.string_file(get_abs_path("data/time/minute_and_second.tsv")).invert()
+        cardinal_graph = cardinal.graph_single_digit_with_zero | cardinal.graph_teens_and_ties
         paune_hour_graph = pynini.string_file(get_abs_path("data/time/hour_for_paune.tsv")).invert()
 
         delete_baje = pynini.union(
@@ -46,8 +45,8 @@ class TimeFst(GraphFst):
 
         self.hour = pynutil.insert("hours: \"") + hour_graph + pynutil.insert("\" ")
         self.paune_hour = pynutil.insert("hours: \"") + paune_hour_graph + pynutil.insert("\" ")
-        self.minute = pynutil.insert("minutes: \"") + minute_graph + pynutil.insert("\" ")
-        self.second = pynutil.insert("seconds: \"") + second_graph + pynutil.insert("\" ")
+        self.minute = pynutil.insert("minutes: \"") + cardinal_graph + pynutil.insert("\" ")
+        self.second = pynutil.insert("seconds: \"") + cardinal_graph + pynutil.insert("\" ")
 
         # hour minute second
         graph_hms = (

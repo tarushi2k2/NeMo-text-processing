@@ -46,6 +46,8 @@ class CardinalFst(GraphFst):
         graph_teens_and_ties = pynini.string_file(get_abs_path("data/numbers/teens_and_ties.tsv")).invert()
         graph_paune = pynini.string_file(get_abs_path("data/numbers/paune.tsv")).invert()
         self.graph_digit = graph_digit
+        self.graph_single_digit_with_zero = pynutil.insert("०") + graph_digit
+        self.graph_teens_and_ties = graph_teens_and_ties
         self.graph_two_digit = graph_teens_and_ties | (pynutil.insert("०") + graph_digit)
         graph_hundred = pynini.cross("सौ", "")
         delete_hundred = pynutil.delete("सौ")

@@ -40,7 +40,7 @@ class MoneyFst(GraphFst):
         super().__init__(name="money", kind="classify")
 
         cardinal_graph = cardinal.graph_no_exception
-        cardinal_single_and_double_digit_graph = cardinal.graph_digit | cardinal.graph_two_digit
+        cardinal_single_and_double_digit_graph = cardinal.graph_digit | cardinal.graph_teens_and_ties
         decimal_graph = decimal.final_graph_wo_negative
         currency_graph = pynini.string_file(get_abs_path("data/money/currency.tsv")).invert()
         paune_graph = pynini.string_file(get_abs_path("data/numbers/paune.tsv")).invert()
