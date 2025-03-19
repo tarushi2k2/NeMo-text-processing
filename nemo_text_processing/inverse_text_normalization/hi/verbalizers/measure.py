@@ -52,7 +52,37 @@ class MeasureFst(GraphFst):
         graph_decimal = (
             pynutil.delete("decimal {") + delete_space + decimal.numbers + delete_space + pynutil.delete("}")
         )
+        graph_exception_bai = (
+            pynutil.delete("cardinal {")
+            + delete_space
+            + optional_sign
+            + delete_space
+            + cardinal.numbers
+            + delete_space
+            + pynutil.insert("x")
+            + delete_space
+            + cardinal.numbers
+            + delete_space
+            + pynutil.delete("}")
+        )
         graph = (graph_cardinal | graph_decimal) + delete_space + pynutil.insert(" ") + unit
+        graph |= graph_exception_bai + pynini.closure(delete_space + pynutil.insert(" ") + unit)
         delete_tokens = self.delete_tokens(graph)
         self.decimal = graph_decimal
         self.fst = delete_tokens.optimize()
+        
+        
+#from nemo_text_processing.inverse_text_normalization.hi.utils import apply_fst
+#from nemo_text_processing.inverse_text_normalization.hi.utils import apply_fst
+#from nemo_text_processing.inverse_text_normalization.hi.verbalizers.decimal import DecimalFst
+#from nemo_text_processing.inverse_text_normalization.hi.verbalizers.cardinal import CardinalFst
+#cardinal = CardinalFst()
+#decimal = DecimalFst()
+#measure = MeasureFst(cardinal, decimal)
+#input_text = 'measure { cardinal { integer: "२"  integer: "२" } }'
+#input_text = 'measure { cardinal { integer: "२"  integer: "२" } units: "MΩ"  }'
+#input_text = 'measure { cardinal { integer: "२"  integer: "२" } }'
+#input_text = 'measure { cardinal { integer: "५"  integer: "५" } }'
+#input_text = 'measure { cardinal { integer: "२२"  integer: "५" } units: "ft³"  }'
+#output = apply_fst(input_text, measure.fst)
+#print(output)

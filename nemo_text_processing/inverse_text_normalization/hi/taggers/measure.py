@@ -23,7 +23,7 @@ from nemo_text_processing.inverse_text_normalization.hi.graph_utils import (
     delete_space,
     insert_space,
 )
-from nemo_text_processing.inverse_text_normalization.hi.utils import get_abs_path
+from nemo_text_processing.inverse_text_normalization.hi.utils import get_abs_path, apply_fst
 
 
 class MeasureFst(GraphFst):
@@ -90,9 +90,37 @@ class MeasureFst(GraphFst):
             + delete_extra_space
             + self.measurements
         )
+        graph_exception_bai = (
+            pynutil.insert("cardinal { ")
+            + optional_graph_negative
+            + pynutil.insert("integer: \"")
+            + cardinal_graph
+            + pynutil.insert("\"")
+            + delete_extra_space
+            + pynutil.delete("बाई")
+            + delete_extra_space
+            + pynutil.insert("integer: \"")
+            + cardinal_graph            
+            + pynutil.insert("\"")
+            + pynutil.insert(" }")
+            + pynini.closure(delete_extra_space
+            + self.measurements)
+        )
         
-        graph = graph_measurements | graph_quarterly_measurements
+        graph = graph_measurements | graph_quarterly_measurements | graph_exception_bai
         self.graph = graph.optimize()
 
         final_graph = self.add_tokens(graph)
         self.fst = final_graph
+        
+#from nemo_text_processing.inverse_text_normalization.hi.taggers.decimal import DecimalFst
+#from nemo_text_processing.inverse_text_normalization.hi.taggers.cardinal import CardinalFst
+#cardinal = CardinalFst()
+#decimal = DecimalFst(cardinal)
+#measure = MeasureFst(cardinal, decimal)
+#input_text = "दो बाई दो"
+#input_text = "दो बाई दो"
+#input_text = "पाँच बाई पाँच"
+#input_text = "बाईस बाई पाँच घन फीट"
+#output = apply_fst(input_text, measure.fst)
+#print(output)
