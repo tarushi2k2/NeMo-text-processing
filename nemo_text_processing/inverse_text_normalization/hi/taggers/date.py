@@ -75,7 +75,7 @@ class DateFst(GraphFst):
             self.day + delete_space + self.month + delete_space + self.year + delete_space + self.century
         )
         graph_month_year_century = self.month + delete_space + self.year + delete_space + self.century
-        graph_year_range = self.year_range
+        graph_year_range = self.year_range + delete_space + self.century
 
         graph_date_exceptions = self.month + delete_space + pynutil.delete("की") + delete_space + self.day
         graph_date_exceptions += pynutil.insert("preserve_order: true")
