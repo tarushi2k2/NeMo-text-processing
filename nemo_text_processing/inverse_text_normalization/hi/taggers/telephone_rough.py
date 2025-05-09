@@ -16,7 +16,7 @@ import pynini
 from pynini.lib import pynutil
 
 from nemo_text_processing.inverse_text_normalization.hi.graph_utils import GraphFst, delete_space
-from nemo_text_processing.inverse_text_normalization.hi.utils import get_abs_path, apply_fst
+from nemo_text_processing.inverse_text_normalization.hi.utils import get_abs_path, apply_fst, load_column_from_tsv
 
 
 class TelephoneFst(GraphFst):
@@ -30,63 +30,75 @@ class TelephoneFst(GraphFst):
 
     def __init__(self, cardinal: GraphFst):
         super().__init__(name="telephone", kind="classify")
+        eng_to_hin_digit_graph = pynini.string_file(get_abs_path("data/telephone/eng_to_hindi_digit.tsv")).invert()
+        hin_word_to_digit_graph = pynini.string_file(get_abs_path("data/numbers/digit.tsv")).invert()
+        hin_word_to_digit_graph |= pynini.string_file(get_abs_path("data/numbers/zero.tsv")).invert()
+        digit = eng_to_hin_digit_graph | hin_word_to_digit_graph
 
-        hindi_digit_graph = pynini.string_file(get_abs_path("data/numbers/digit.tsv")).invert()
-        hindi_digit_graph |= pynini.string_file(get_abs_path("data/numbers/zero.tsv")).invert()
-
-        english_digit_graph = pynini.string_file(get_abs_path("data/telephone/eng_to_hindi_digit.tsv")).invert()
-
-        std_graph = pynini.string_file(get_abs_path("data/telephone/STD_codes_eng.tsv")).invert()
-        std_graph = pynini.string_file(get_abs_path("data/telephone/STD_codes_hin.tsv")).invert()
+        eng_word_to_hin_std_graph = pynini.string_file(get_abs_path("data/telephone/STD_codes_eng.tsv")).invert()
+        hin_word_to_hin_std_graph = pynini.string_file(get_abs_path("data/telephone/STD_codes_hin.tsv")).invert()
+        words_to_hin_std_graph = eng_word_to_hin_std_graph | hin_word_to_hin_std_graph
         
-        landline_operator_graph = pynini.string_file(get_abs_path("data/telephone/landline_operator_digits_eng.tsv")).invert()
-        landline_operator_graph |= pynini.string_file(get_abs_path("data/telephone/landline_operator_digits_hin.tsv")).invert()
-        
+        list_eng_stds = load_column_from_tsv(get_abs_path("data/telephone/STD_codes_eng.tsv"))
+        list_hin_stds = load_column_from_tsv(get_abs_path("data/telephone/STD_codes_hin.tsv"))
+        list_valid_stds = list_eng_stds + list_hin_stds
 
-        # extension code with zero
-        self.city_code = (
-            pynutil.insert("extension: \"")
-            + pynini.closure(std_graph, 2, 7)
-            + delete_space
-            + pynutil.insert("\" ")
-        )
-        
-        self.city_extension = self.city_code
-        
-        # landline graph in hindi and english digits
-        self.landline_hindi = (
-            pynutil.insert("number_part: \"")
-            + delete_space
-            + pynini.closure(hindi_digit_graph, 3, 8)
-            + delete_space
-            + pynutil.insert("\" ")
-        )
-        self.landline_english = (
-            pynutil.insert("number_part: \"")
-            + delete_space
-            + pynini.closure(english_digit_graph, 3, 8)
-            + delete_space
-            + pynutil.insert("\" ")
-        )
+        list_eng_valid_landline_start_digits = load_column_from_tsv(get_abs_path("data/telephone/landline_operator_digits_eng.tsv"))
+        list_hin_valid_landline_start_digits = load_column_from_tsv(get_abs_path("data/telephone/landline_operator_digits_hin.tsv"))
+        list_valid_landline_start_digits = list_eng_valid_landline_start_digits + list_hin_valid_landline_start_digits
 
-        self.landline = self.landline_hindi | self.landline_english
+        landline_start_digits = pynini.union(*list_valid_landline_start_digits)
+        landline_start_digit = (landline_start_digits @ digit) + delete_space
 
-        delete_zero = pynini.union(
-            pynutil.delete("शून्य") | pynutil.delete("zero") | pynutil.delete("Zero") | pynutil.delete("ZERO")
-        )
- 
-        graph_landline_with_extension = pynini.closure(delete_zero + delete_space + self.city_extension + delete_space + self.landline, 10)
-        
-        graph = graph_landline_with_extension
+        two_digit_std = pynini.union(*list(filter(lambda x: len(x.split())==2, list_valid_stds)))
+        two_digit_graph = (
+            (pynutil.insert("extension: \"") + (two_digit_std @ words_to_hin_std_graph) + pynutil.insert("\" ")) 
+            + delete_space
+            + (pynutil.insert("number_part: \"") + landline_start_digit + pynini.closure((digit + delete_space), 7, 7) + pynutil.insert("\" "))
+        ).optimize()
 
+        three_digit_std = pynini.union(*list(filter(lambda x: len(x.split())==3, list_valid_stds)))
+        three_digit_std_graph = (
+            (pynutil.insert("extension: \"") + (three_digit_std @ words_to_hin_std_graph) + pynutil.insert("\" ")) 
+            + delete_space
+            + (pynutil.insert("number_part: \"") + landline_start_digit + pynini.closure((digit + delete_space), 6, 6) + pynutil.insert("\" "))
+        ).optimize()
+
+        four_digit_std = pynini.union(*list(filter(lambda x: len(x.split())==4, list_valid_stds)))
+        four_digit_std_graph = (
+            (pynutil.insert("extension: \"") + (four_digit_std @ words_to_hin_std_graph) + pynutil.insert("\" ")) 
+            + delete_space
+            + (pynutil.insert("number_part: \"") + landline_start_digit + pynini.closure((digit + delete_space), 5, 5) + pynutil.insert("\" "))
+        ).optimize()
+
+        five_digit_std = pynini.union(*list(filter(lambda x: len(x.split())==5, list_valid_stds)))
+        five_digit_std_graph = (
+            (pynutil.insert("extension: \"") + (five_digit_std @ words_to_hin_std_graph) + pynutil.insert("\" ")) 
+            + delete_space
+            + (pynutil.insert("number_part: \"") + landline_start_digit + pynini.closure((digit + delete_space), 4, 4) + pynutil.insert("\" "))
+        ).optimize()
+
+        six_digit_std = pynini.union(*list(filter(lambda x: len(x.split())==6, list_valid_stds)))
+        six_digit_std_graph = (
+            (pynutil.insert("extension: \"") + (six_digit_std @ words_to_hin_std_graph) + pynutil.insert("\" ")) 
+            + delete_space
+            + (pynutil.insert("number_part: \"") + landline_start_digit + pynini.closure((digit + delete_space), 3, 3) + pynutil.insert("\" "))
+        ).optimize()
+
+        seven_digit_std = pynini.union(*list(filter(lambda x: len(x.split())==7, list_valid_stds)))
+        seven_digit_std_graph = (
+            (pynutil.insert("extension: \"") + (seven_digit_std @ words_to_hin_std_graph) + pynutil.insert("\" ")) 
+            + delete_space
+            + (pynutil.insert("number_part: \"") + landline_start_digit + pynini.closure((digit + delete_space), 2, 2) + pynutil.insert("\" "))
+        ).optimize()
+
+        graph = two_digit_graph | three_digit_std_graph | four_digit_std_graph | five_digit_std_graph | six_digit_std_graph | seven_digit_std_graph
         final_graph = self.add_tokens(graph)
         self.fst = final_graph
-        
-from nemo_text_processing.inverse_text_normalization.hi.taggers.cardinal import CardinalFst
-cardinal = CardinalFst()
-telephone = TelephoneFst(cardinal)
-input_text = "zero one six three four two eight one eight three one" #Abohar city code(first four digits 0164) + landline in english 281831. this landline should only start with the numbers 2,3,4,6. anything else should not be accepted.
 
-#input_text = "शून्य एक छह तीन चार दो आठ एक आठ तीन एक" #Abohar city code(first five digits) + landline in hindi
-output = apply_fst(input_text, telephone.fst)
-print(output)
+def run(input_text):
+    from nemo_text_processing.inverse_text_normalization.hi.taggers.cardinal import CardinalFst
+    cardinal = CardinalFst()
+    telephone = TelephoneFst(cardinal)
+    output = apply_fst(input_text, telephone.fst)
+    print(output)
